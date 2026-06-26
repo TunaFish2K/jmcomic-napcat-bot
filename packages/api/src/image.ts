@@ -1,4 +1,4 @@
-import sharp, { type Metadata } from "sharp";
+import sharp from "sharp";
 import { createHash } from "crypto";
 import { IMAGE_DOWNLOAD_TIMEOUT_MS } from "./constants.js";
 import type { PhotoInfo } from "./upstream.js";
@@ -108,17 +108,7 @@ export async function downloadCoverImage(
     const raw = await downloadImage(firstImage.url);
     return await processImage(raw, photo.scrambleId, photoId, firstImage.name);
   } catch (err) {
-    console.error("Failed to download cover image:", err);
+    console.error(`Failed to download cover image for photo ${photo.id}:`, err);
     return null;
   }
-}
-
-export interface ProcessedImage {
-  data: Buffer;
-  width: number;
-  height: number;
-}
-
-export async function getImageMetadata(buffer: Buffer): Promise<Metadata> {
-  return await sharp(buffer).metadata();
 }

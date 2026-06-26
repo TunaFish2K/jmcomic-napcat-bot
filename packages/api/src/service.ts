@@ -23,7 +23,7 @@ import {
 } from "./data.js";
 import { generatePDF, type ProgressInfo } from "./pdf.js";
 import { downloadCoverImage } from "./image.js";
-import { PDF_DOWNLOAD_CONCURRENCY } from "./constants.js";
+import { CPU_CONCURRENCY } from "./constants.js";
 
 export interface InfoResponse {
   name: string;
@@ -48,6 +48,46 @@ export type TaskStatusResult =
   | { status: "ready" }
   | { status: "pending" | "processing" | "not_found"; progress?: TaskProgress }
   | { status: "error"; error: string };
+
+// --- error helpers ---
+
+export function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    if ("message" in err && typeof (err as any).message === "string")
+      return (err as any).message;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return "未知错误";
+    }
+  }
+  return String(err);
+}
+
+function translateError(err: unknown): string {
+  const msg = extractErrorMessage(err);
+
+  if (
+    msg.includes("PHOTO_NOT_FOUND") ||
+    msg.includes("photo_not_found") ||
+    msg.includes("ALBUM_NOT_FOUND") ||
+    msg.includes("album_not_found")
+  )
+    return "未找到该本子，请检查 ID 是否正确";
+
+  if (
+    msg.includes("UPSTREAM_RESPONSE_INVALID") ||
+    msg.includes("upstream_response_invalid")
+  )
+    return "上游服务器响应异常，请稍后重试";
+
+  if (msg.includes("No images could be embedded"))
+    return "本子没有可用图片，无法生成 PDF";
+
+  return msg;
+}
 
 // --- lifecycle ---
 
@@ -153,7 +193,7 @@ export async function queryInfo(id: string): Promise<InfoResponse> {
   ]);
 
   if (!photoResult.success) {
-    throw new Error(`Upstream error: ${photoResult.error}`);
+    throw new Error(translateError(photoResult.error));
   }
 
   const photo = photoResult.result;
@@ -215,7 +255,7 @@ async function runWorker() {
     try {
       const result = await queryPhotoUpstream(id);
       if (!result.success)
-        throw new Error(`Upstream error: ${result.error}`);
+        throw new Error(translateError(result.error));
 
       const photo = result.result;
       const startedAt = Date.now();
@@ -242,7 +282,7 @@ async function runWorker() {
           });
         },
         (elapsed: number, total: number) => {
-          const etaSeconds = Math.round((elapsed * total) / PDF_DOWNLOAD_CONCURRENCY / 1000);
+          const etaSeconds = Math.round((elapsed * total) / CPU_CONCURRENCY / 1000);
           setTaskState(id, {
             status: "processing",
             retryCount,
@@ -259,8 +299,8 @@ async function runWorker() {
       deleteTaskState(id);
       console.log(`PDF generated and cached: ${id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`Failed to generate PDF for ${id}:`, message);
+      const message = translateError(err);
+      console.error(`Failed to generate PDF for ${id}:`, err);
 
       if (retryCount < MAX_RETRIES) {
         const pushed = toPDFQueue.push(id);

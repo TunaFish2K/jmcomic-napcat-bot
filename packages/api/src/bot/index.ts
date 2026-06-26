@@ -12,6 +12,7 @@ import {
   handleDownload,
 } from "./commands.js";
 import { setNapcatInstance, reply, buildNotificationMessage } from "./reply.js";
+import { RateLimiter } from "./rate-limiter.js";
 
 export async function startBot(): Promise<void> {
   const napcat = new NCWebsocket(
@@ -29,6 +30,7 @@ export async function startBot(): Promise<void> {
 
   setNapcatInstance(napcat);
 
+  const rateLimiter = new RateLimiter();
   let botUserId: number | null = null;
 
   function extractTextAndCheckMention(
@@ -59,6 +61,14 @@ export async function startBot(): Promise<void> {
   napcat.on("message", async (context) => {
     const text = extractTextAndCheckMention(context);
     if (!text) return;
+
+    if (!rateLimiter.try(context.user_id)) {
+      await reply(
+        context,
+        buildNotificationMessage("操作过于频繁，请稍后再试", context.user_id),
+      );
+      return;
+    }
 
     if (isHelpCommand(text)) {
       await reply(context, buildNotificationMessage(

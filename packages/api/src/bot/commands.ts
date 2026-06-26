@@ -4,6 +4,7 @@ import {
   queryPDFStatus,
   readPDFBuffer,
   isInfoCached,
+  extractErrorMessage,
   type InfoResponse,
   type TaskStatusResult,
 } from "../service.js";
@@ -91,7 +92,7 @@ export async function handleQuery(context: MessageContext, id: string) {
     const msg = buildCoverMessage(text, info.cover, context.user_id);
     await reply(context, msg);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = extractErrorMessage(err);
     await reply(
       context,
       buildNotificationMessage(`查询失败：${message}`, context.user_id),
@@ -131,18 +132,12 @@ export async function handleDownload(context: MessageContext, id: string) {
         );
         return;
       }
-      if (status.status === "processing" && status.progress && !sentEstimate) {
-        const { processedImages, totalImages, startedAt } = status.progress;
-        if (processedImages > 0) {
-          const elapsed = Date.now() - startedAt;
-          const perPage = elapsed / processedImages;
-          const remaining = Math.round((perPage * (totalImages - processedImages)) / 1000);
-          await reply(
-            context,
-            buildNotificationMessage(`预计还需要 ${remaining} 秒 (${processedImages}/${totalImages})`, context.user_id),
-          );
-          sentEstimate = true;
-        }
+      if (status.status === "processing" && status.progress?.etaSeconds && !sentEstimate) {
+        await reply(
+          context,
+          buildNotificationMessage(`预计还需要 ${status.progress.etaSeconds} 秒`, context.user_id),
+        );
+        sentEstimate = true;
       }
     }
 
@@ -151,7 +146,7 @@ export async function handleDownload(context: MessageContext, id: string) {
       buildNotificationMessage("PDF 生成超时，请稍后重试", context.user_id),
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = extractErrorMessage(err);
     await reply(
       context,
       buildNotificationMessage(`PDF 生成失败：${message}`, context.user_id),
