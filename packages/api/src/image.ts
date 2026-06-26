@@ -106,7 +106,14 @@ export async function downloadCoverImage(
   const photoId = parseInt(photo.id);
   try {
     const raw = await downloadImage(firstImage.url);
-    return await processImage(raw, photo.scrambleId, photoId, firstImage.name);
+    const processed = await processImage(raw, photo.scrambleId, photoId, firstImage.name);
+    if (!processed) return null;
+
+    // resize cover to keep message size manageable
+    return await sharp(processed)
+      .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 70 })
+      .toBuffer();
   } catch (err) {
     console.error(`Failed to download cover image for photo ${photo.id}:`, err);
     return null;
