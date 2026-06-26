@@ -112,7 +112,7 @@ export async function downloadCoverImage(
     // resize cover to keep message size manageable
     return await sharp(processed)
       .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 70 })
+      .jpeg({ quality: 80 })
       .toBuffer();
   } catch (err) {
     console.error(`Failed to download cover image for photo ${photo.id}:`, err);
