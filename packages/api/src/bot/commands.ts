@@ -10,14 +10,26 @@ import {
 import {
   reply,
   buildNotificationMessage,
-  buildTextAndCoverMessage,
   buildFileNotification,
+  atOnly,
+  forwardNodes,
+  sendForward,
+  textContent,
+  imageContent,
   type MessageContext,
 } from "./reply.js";
 import { POLL_INTERVAL_MS, MAX_POLL_ATTEMPTS } from "./config.js";
 
 const QUERY_ALIASES = new Set(["/query", "/查询", "/本子"]);
 const DOWNLOAD_ALIASES = new Set(["/pdf", "/download", "/dl", "/下载"]);
+
+let botUserId = "0";
+let botNickname = "JMComic Bot";
+
+export function setBotInfo(userId: number, nickname: string) {
+  botUserId = String(userId);
+  botNickname = nickname;
+}
 
 export interface ParsedCommand {
   type: "query" | "download";
@@ -87,10 +99,22 @@ export async function handleQuery(context: MessageContext, id: string) {
   try {
     const info = await queryInfo(id);
     const text = buildInfoText(info);
-    await reply(
-      context,
-      buildTextAndCoverMessage(text, info.cover, context.user_id),
-    );
+
+    // @ notification
+    await reply(context, atOnly(context.user_id));
+
+    // merge-forward: text + cover
+    const nodes = [
+      { content: textContent(text), userId: botUserId, nickname: botNickname },
+    ];
+    if (info.cover) {
+      nodes.push({
+        content: imageContent(info.cover),
+        userId: botUserId,
+        nickname: botNickname,
+      });
+    }
+    await sendForward(context, forwardNodes(nodes));
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(
