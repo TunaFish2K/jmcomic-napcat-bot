@@ -10,26 +10,14 @@ import {
 import {
   reply,
   buildNotificationMessage,
-  atOnly,
-  forwardNodes,
-  sendForward,
-  textContent,
-  imageContent,
-  fileContent,
+  buildImageNotification,
+  buildFileNotification,
   type MessageContext,
 } from "./reply.js";
 import { POLL_INTERVAL_MS, MAX_POLL_ATTEMPTS } from "./config.js";
 
 const QUERY_ALIASES = new Set(["/query", "/查询", "/本子"]);
 const DOWNLOAD_ALIASES = new Set(["/pdf", "/download", "/dl", "/下载"]);
-
-let botUserId = "0";
-let botNickname = "JMComic Bot";
-
-export function setBotInfo(userId: number, nickname: string) {
-  botUserId = String(userId);
-  botNickname = nickname;
-}
 
 export interface ParsedCommand {
   type: "query" | "download";
@@ -99,22 +87,11 @@ export async function handleQuery(context: MessageContext, id: string) {
   try {
     const info = await queryInfo(id);
     const text = buildInfoText(info);
+    await reply(context, buildNotificationMessage(text, context.user_id));
 
-    // @ notification
-    await reply(context, atOnly(context.user_id));
-
-    // merge-forward: text + cover
-    const nodes = [
-      { content: textContent(text), userId: botUserId, nickname: botNickname },
-    ];
     if (info.cover) {
-      nodes.push({
-        content: imageContent(info.cover),
-        userId: botUserId,
-        nickname: botNickname,
-      });
+      await reply(context, buildImageNotification(info.cover, context.user_id));
     }
-    await sendForward(context, forwardNodes(nodes));
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(
@@ -146,12 +123,10 @@ export async function handleDownload(context: MessageContext, id: string) {
       const status = await queryPDFStatus(id);
       if (status.status === "ready") {
         const buffer = await readPDFBuffer(id);
-
-        // @ notification
-        await reply(context, atOnly(context.user_id));
-
-        // send file directly (forward with large content may timeout)
-        await reply(context, fileContent(buffer, `${id}.pdf`));
+        await reply(
+          context,
+          buildFileNotification(buffer, `${id}.pdf`, context.user_id),
+        );
         return;
       }
       if (status.status === "error") {

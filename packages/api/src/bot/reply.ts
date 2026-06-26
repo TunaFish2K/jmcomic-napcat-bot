@@ -1,4 +1,4 @@
-import type { AllHandlers, NCWebsocket, SendMessageSegment, NodeSegment } from "node-napcat-ts";
+import type { AllHandlers, NCWebsocket, SendMessageSegment } from "node-napcat-ts";
 import { Structs } from "node-napcat-ts";
 
 export type MessageContext = AllHandlers["message"];
@@ -9,11 +9,7 @@ export function setNapcatInstance(napcat: NCWebsocket) {
   globalNapcat = napcat;
 }
 
-// --- regular message builders ---
-
-export function buildTextMessage(text: string): SendMessageSegment[] {
-  return [Structs.text(text)];
-}
+// --- message builders ---
 
 export function buildNotificationMessage(
   text: string,
@@ -25,45 +21,26 @@ export function buildNotificationMessage(
   return segments;
 }
 
-// --- forward message builders ---
-
-export function atOnly(userId: number): SendMessageSegment[] {
-  return [Structs.at(userId)];
-}
-
-export function forwardNodes(
-  items: { content: SendMessageSegment[]; userId: string; nickname: string }[],
-): NodeSegment[] {
-  return items.map((item) =>
-    Structs.customNode(item.content, item.userId, item.nickname),
-  );
-}
-
-export async function sendForward(
-  context: MessageContext,
-  nodes: NodeSegment[],
-): Promise<{ message_id: number; res_id: string }> {
-  if (!globalNapcat) throw new Error("Napcat instance not initialized");
-  if (context.message_type !== "group") throw new Error("sendForward only supports group messages");
-  return globalNapcat.send_forward_msg({
-    group_id: context.group_id!,
-    message: nodes,
-  });
-}
-
-// --- node content builders ---
-
-export function textContent(text: string): SendMessageSegment[] {
-  return [Structs.text(text)];
-}
-
-export function imageContent(base64DataUrl: string): SendMessageSegment[] {
+export function buildImageNotification(
+  base64DataUrl: string,
+  userId?: number,
+): SendMessageSegment[] {
   const base64 = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
-  return [Structs.image(`base64://${base64}`, "cover.jpg")];
+  const segments: SendMessageSegment[] = [];
+  if (userId) segments.push(Structs.at(userId));
+  segments.push(Structs.image(`base64://${base64}`, "cover.jpg"));
+  return segments;
 }
 
-export function fileContent(file: string | Buffer, name: string): SendMessageSegment[] {
-  return [Structs.file(file, name)];
+export function buildFileNotification(
+  file: string | Buffer,
+  name: string,
+  userId?: number,
+): SendMessageSegment[] {
+  const segments: SendMessageSegment[] = [];
+  if (userId) segments.push(Structs.at(userId));
+  segments.push(Structs.file(file, name));
+  return segments;
 }
 
 // --- reply helper ---
