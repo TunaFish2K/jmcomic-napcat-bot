@@ -103,18 +103,16 @@ export async function handleQuery(context: MessageContext, id: string) {
     // @ notification
     await reply(context, atOnly(context.user_id));
 
-    // merge-forward: text + cover
-    const nodes: { content: ReturnType<typeof textContent>; userId: string; nickname: string }[] = [
+    // merge-forward: text only
+    const nodes = [
       { content: textContent(text), userId: botUserId, nickname: botNickname },
     ];
-    if (info.cover) {
-      nodes.push({
-        content: imageContent(info.cover),
-        userId: botUserId,
-        nickname: botNickname,
-      });
-    }
     await sendForward(context, forwardNodes(nodes));
+
+    // cover as separate regular message (forward with base64 image may timeout)
+    if (info.cover) {
+      await reply(context, imageContent(info.cover));
+    }
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(
@@ -150,11 +148,8 @@ export async function handleDownload(context: MessageContext, id: string) {
         // @ notification
         await reply(context, atOnly(context.user_id));
 
-        // merge-forward: pdf file
-        const nodes = [
-          { content: fileContent(buffer, `${id}.pdf`), userId: botUserId, nickname: botNickname },
-        ];
-        await sendForward(context, forwardNodes(nodes));
+        // send file directly (forward with large content may timeout)
+        await reply(context, fileContent(buffer, `${id}.pdf`));
         return;
       }
       if (status.status === "error") {
