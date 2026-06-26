@@ -19,6 +19,7 @@ import {
   type MessageContext,
 } from "./reply.js";
 import { POLL_INTERVAL_MS, MAX_POLL_ATTEMPTS } from "./config.js";
+import { runQueryMiddlewares, runDownloadMiddlewares } from "./middleware.js";
 
 const QUERY_ALIASES = new Set(["/query", "/查询", "/本子"]);
 const DOWNLOAD_ALIASES = new Set(["/pdf", "/download", "/dl", "/下载"]);
@@ -87,6 +88,12 @@ function buildInfoText(info: InfoResponse): string {
 }
 
 export async function handleQuery(context: MessageContext, id: string) {
+  const block = await runQueryMiddlewares({ id, userId: context.user_id });
+  if (block) {
+    await reply(context, block);
+    return;
+  }
+
   const isCached = isInfoCached(id);
 
   if (!isCached) {
@@ -142,6 +149,12 @@ async function trySendForwardSafe(
 }
 
 export async function handleDownload(context: MessageContext, id: string) {
+  const block = await runDownloadMiddlewares({ id, userId: context.user_id });
+  if (block) {
+    await reply(context, block);
+    return;
+  }
+
   await reply(
     context,
     buildNotificationMessage("下载中", context.user_id),
