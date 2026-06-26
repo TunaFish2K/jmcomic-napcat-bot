@@ -46,16 +46,16 @@ export async function runDownloadMiddlewares(
 const BLOCKED_IDS = new Set(["350234", "350235"]);
 const BLOCK_REPLY = "这么喜欢董卓奖励你和董卓做呱😡😡😡";
 
-addQueryMiddleware(async ({ id }) => {
+addQueryMiddleware(async ({ id, userId }) => {
   if (BLOCKED_IDS.has(id)) {
-    return [Structs.text(BLOCK_REPLY)];
+    return [Structs.at(userId), Structs.text(`\n${BLOCK_REPLY}`)];
   }
   return null;
 });
 
-addDownloadMiddleware(async ({ id }) => {
+addDownloadMiddleware(async ({ id, userId }) => {
   if (BLOCKED_IDS.has(id)) {
-    return [Structs.text(BLOCK_REPLY)];
+    return [Structs.at(userId), Structs.text(`\n${BLOCK_REPLY}`)];
   }
   return null;
 });
