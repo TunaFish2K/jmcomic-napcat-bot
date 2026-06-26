@@ -99,10 +99,11 @@ export async function handleQuery(context: MessageContext, id: string) {
   try {
     const info = await queryInfo(id);
     const text = buildInfoText(info);
-    await reply(context, atOnly(context.user_id));
 
     const ok = await trySendForwardSafe(context, text, info.cover);
-    if (!ok) {
+    if (ok) {
+      await reply(context, atOnly(context.user_id));
+    } else {
       await reply(context, buildNotificationMessage(text, context.user_id));
     }
   } catch (err) {
@@ -119,35 +120,25 @@ async function trySendForwardSafe(
   text: string,
   cover: string | null,
 ): Promise<boolean> {
-  const nodes = [
-    { content: textContent(text), userId: botUserId, nickname: botNickname },
-  ];
-  if (cover) {
-    nodes.push({
-      content: imageContent(cover),
-      userId: botUserId,
-      nickname: botNickname,
-    });
-  }
+  const textNode = { content: textContent(text), userId: botUserId, nickname: botNickname };
+
   try {
+    const nodes = cover
+      ? [textNode, { content: imageContent(cover), userId: botUserId, nickname: botNickname }]
+      : [textNode];
     await sendForward(context, forwardNodes(nodes));
     return true;
-  } catch {
-    // timeout or other error, fall through
+  } catch (err) {
+    console.warn("sendForward (with cover) failed, trying text-only:", extractErrorMessage(err));
   }
 
-  if (cover) {
-    try {
-      await sendForward(context, forwardNodes([
-        { content: textContent(text), userId: botUserId, nickname: botNickname },
-      ]));
-      return true;
-    } catch {
-      // fall through
-    }
+  try {
+    await sendForward(context, forwardNodes([textNode]));
+    return true;
+  } catch (err) {
+    console.warn("sendForward (text-only) failed, falling back to plain message:", extractErrorMessage(err));
+    return false;
   }
-
-  return false;
 }
 
 export async function handleDownload(context: MessageContext, id: string) {
