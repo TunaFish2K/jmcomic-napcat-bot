@@ -99,22 +99,12 @@ export async function handleQuery(context: MessageContext, id: string) {
   try {
     const info = await queryInfo(id);
     const text = buildInfoText(info);
-
-    // @ notification
     await reply(context, atOnly(context.user_id));
 
-    // merge-forward: text + cover
-    const nodes = [
-      { content: textContent(text), userId: botUserId, nickname: botNickname },
-    ];
-    if (info.cover) {
-      nodes.push({
-        content: imageContent(info.cover),
-        userId: botUserId,
-        nickname: botNickname,
-      });
+    const ok = await trySendForwardSafe(context, text, info.cover);
+    if (!ok) {
+      await reply(context, buildNotificationMessage(text, context.user_id));
     }
-    await sendForward(context, forwardNodes(nodes));
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(
@@ -122,6 +112,42 @@ export async function handleQuery(context: MessageContext, id: string) {
       buildNotificationMessage(`查询失败：${message}`, context.user_id),
     );
   }
+}
+
+async function trySendForwardSafe(
+  context: MessageContext,
+  text: string,
+  cover: string | null,
+): Promise<boolean> {
+  const nodes = [
+    { content: textContent(text), userId: botUserId, nickname: botNickname },
+  ];
+  if (cover) {
+    nodes.push({
+      content: imageContent(cover),
+      userId: botUserId,
+      nickname: botNickname,
+    });
+  }
+  try {
+    await sendForward(context, forwardNodes(nodes));
+    return true;
+  } catch {
+    // timeout or other error, fall through
+  }
+
+  if (cover) {
+    try {
+      await sendForward(context, forwardNodes([
+        { content: textContent(text), userId: botUserId, nickname: botNickname },
+      ]));
+      return true;
+    } catch {
+      // fall through
+    }
+  }
+
+  return false;
 }
 
 export async function handleDownload(context: MessageContext, id: string) {
