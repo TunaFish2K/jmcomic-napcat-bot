@@ -1,0 +1,61 @@
+services:
+  jmcomic-bot:
+    build: .
+    container_name: jmcomic-bot
+    restart: unless-stopped
+    environment:
+      # Napcat connection
+      NAPCAT_WS_URL: ws://napcat:3001
+      NAPCAT_ACCESS_TOKEN: ""
+
+      # Upstream API
+      JM_UPSTREAM_BASE_URL: https://jmserver.2kb.fish
+      JM_UPSTREAM_TIMEOUT_MS: 10000
+
+      # Info cache (memory)
+      JM_INFO_CACHE_TTL: 600
+      JM_INFO_CACHE_MAX_KEYS: 100
+
+      # PDF task queue
+      JM_MAX_TASK_QUEUED: 100
+      JM_WORKER_POOL_SIZE: 3
+      JM_MAX_RETRIES: 3
+      JM_ERROR_TTL_MS: 3600000
+
+      # Image download
+      JM_IMAGE_DOWNLOAD_TIMEOUT: 30000
+      JM_PDF_DOWNLOAD_CONCURRENCY: 5
+
+      # PDF disk cache
+      JM_PDF_CACHE_DIR: /app/packages/api/cache
+      JM_PDF_CACHE_MAX_SIZE: 10737418240
+
+      # PDF polling
+      JM_POLL_INTERVAL_MS: 2000
+      JM_MAX_POLL_ATTEMPTS: 60
+
+    volumes:
+      - jmcomic-cache:/app/packages/api/cache
+
+volumes:
+  jmcomic-cache:
+
+# Example Napcat service (uncomment and configure):
+#  napcat:
+#    image: mlky/napcat:latest
+#    container_name: napcat
+#    environment:
+#      ACCOUNT: <qq_number>
+#      WS_ENABLE: true
+#      NAPCAT_UID: 0
+#      NAPCAT_GID: 0
+#    volumes:
+#      - napcat-config:/usr/src/app/napcat/config
+#      - napcat-data:/usr/src/app/napcat/data
+#    ports:
+#      - "3001:3001"
+#      - "6099:6099"
+#
+# volumes:
+#   napcat-config:
+#   napcat-data:
