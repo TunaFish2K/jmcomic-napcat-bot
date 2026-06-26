@@ -10,7 +10,7 @@ import {
 import {
   reply,
   buildNotificationMessage,
-  buildImageNotification,
+  buildTextAndCoverMessage,
   buildFileNotification,
   type MessageContext,
 } from "./reply.js";
@@ -87,11 +87,10 @@ export async function handleQuery(context: MessageContext, id: string) {
   try {
     const info = await queryInfo(id);
     const text = buildInfoText(info);
-    await reply(context, buildNotificationMessage(text, context.user_id));
-
-    if (info.cover) {
-      await reply(context, buildImageNotification(info.cover, context.user_id));
-    }
+    await reply(
+      context,
+      buildTextAndCoverMessage(text, info.cover, context.user_id),
+    );
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(

@@ -32,6 +32,21 @@ export function buildImageNotification(
   return segments;
 }
 
+export function buildTextAndCoverMessage(
+  text: string,
+  base64DataUrl: string | null,
+  userId?: number,
+): SendMessageSegment[] {
+  const segments: SendMessageSegment[] = [];
+  if (userId) segments.push(Structs.at(userId));
+  segments.push(Structs.text(`\n${text}`));
+  if (base64DataUrl) {
+    const base64 = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
+    segments.push(Structs.image(`base64://${base64}`, "cover.jpg"));
+  }
+  return segments;
+}
+
 export function buildFileNotification(
   file: string | Buffer,
   name: string,
