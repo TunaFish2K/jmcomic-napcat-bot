@@ -69,24 +69,10 @@ export function extractErrorMessage(err: unknown): string {
 function translateError(err: unknown): string {
   const msg = extractErrorMessage(err);
 
-  if (
-    msg.includes("PHOTO_NOT_FOUND") ||
-    msg.includes("photo_not_found") ||
-    msg.includes("ALBUM_NOT_FOUND") ||
-    msg.includes("album_not_found")
-  )
-    return "未找到该本子，请检查 ID 是否正确";
-
-  if (
-    msg.includes("UPSTREAM_RESPONSE_INVALID") ||
-    msg.includes("upstream_response_invalid")
-  )
-    return "上游服务器响应异常，请稍后重试";
-
   if (msg.includes("No images could be embedded"))
     return "本子没有可用图片，无法生成 PDF";
 
-  return msg;
+  return "未找到该本子，请检查 ID 是否正确";
 }
 
 // --- lifecycle ---
