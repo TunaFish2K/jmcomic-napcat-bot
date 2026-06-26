@@ -9,14 +9,27 @@ import {
 } from "./image.js";
 import { PDF_DOWNLOAD_CONCURRENCY } from "./constants.js";
 
-export async function generatePDF(photo: PhotoInfo): Promise<Buffer> {
+export interface ProgressInfo {
+  processed: number;
+  total: number;
+}
+
+export async function generatePDF(
+  photo: PhotoInfo,
+  onProgress?: (info: ProgressInfo) => void,
+  onFirstImage?: (elapsed: number, total: number) => void,
+): Promise<Buffer> {
   const pdfDocument = await PDFDocument.create();
   const photoId = parseInt(photo.id);
   const limit = pLimit(PDF_DOWNLOAD_CONCURRENCY);
+  const total = photo.images.length;
+  let firstReported = false;
 
   const processedImages = await Promise.all(
-    photo.images.map((image) =>
+    photo.images.map((image, idx) =>
       limit(async (): Promise<ProcessedImage | null> => {
+        const downloadStarted = Date.now();
+
         let rawBuffer: Buffer;
         try {
           rawBuffer = await downloadImage(image.url);
@@ -41,6 +54,11 @@ export async function generatePDF(photo: PhotoInfo): Promise<Buffer> {
           return null;
         }
 
+        if (!firstReported) {
+          firstReported = true;
+          onFirstImage?.(Date.now() - downloadStarted, total);
+        }
+
         return {
           data: processed,
           width: metadata.width!,
@@ -50,6 +68,7 @@ export async function generatePDF(photo: PhotoInfo): Promise<Buffer> {
     ),
   );
 
+  let embedded = 0;
   for (const image of processedImages) {
     if (image === null) continue;
 
@@ -68,6 +87,8 @@ export async function generatePDF(photo: PhotoInfo): Promise<Buffer> {
       width: image.width,
       height: image.height,
     });
+    embedded++;
+    onProgress?.({ processed: embedded, total });
   }
 
   if (pdfDocument.getPageCount() === 0) {

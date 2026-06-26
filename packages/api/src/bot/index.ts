@@ -4,8 +4,14 @@ import {
   NAPCAT_WS_URL,
   NAPCAT_ACCESS_TOKEN,
 } from "./config.js";
-import { parseCommand, handleQuery, handleDownload } from "./commands.js";
-import { setNapcatInstance, reply, buildTextMessage } from "./reply.js";
+import {
+  parseCommand,
+  isHelpCommand,
+  buildHelpMessage,
+  handleQuery,
+  handleDownload,
+} from "./commands.js";
+import { setNapcatInstance, reply, buildNotificationMessage } from "./reply.js";
 
 export async function startBot(): Promise<void> {
   const napcat = new NCWebsocket(
@@ -54,12 +60,20 @@ export async function startBot(): Promise<void> {
     const text = extractTextAndCheckMention(context);
     if (!text) return;
 
+    if (isHelpCommand(text)) {
+      await reply(context, buildNotificationMessage(
+        `\n${buildHelpMessage()}`,
+        context.user_id,
+      ));
+      return;
+    }
+
     const command = parseCommand(text);
     if (!command) {
-      await reply(
-        context,
-        buildTextMessage("支持的指令：/query /pdf /download /dl"),
-      );
+      await reply(context, buildNotificationMessage(
+        `\n${buildHelpMessage()}`,
+        context.user_id,
+      ));
       return;
     }
 

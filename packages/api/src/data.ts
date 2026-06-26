@@ -213,6 +213,10 @@ export interface TaskState {
   error?: string;
   retryCount: number;
   updatedAt: number;
+  totalImages?: number;
+  processedImages?: number;
+  startedAt?: number;
+  etaSeconds?: number;
 }
 
 const taskStates = new Map<string, TaskState>();

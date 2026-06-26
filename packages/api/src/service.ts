@@ -21,8 +21,9 @@ import {
   setTaskState,
   deleteTaskState,
 } from "./data.js";
-import { generatePDF } from "./pdf.js";
+import { generatePDF, type ProgressInfo } from "./pdf.js";
 import { downloadCoverImage } from "./image.js";
+import { PDF_DOWNLOAD_CONCURRENCY } from "./constants.js";
 
 export interface InfoResponse {
   name: string;
@@ -36,9 +37,16 @@ export interface InfoResponse {
   cover: string | null;
 }
 
+export interface TaskProgress {
+  totalImages: number;
+  processedImages: number;
+  startedAt: number;
+  etaSeconds?: number | undefined;
+}
+
 export type TaskStatusResult =
   | { status: "ready" }
-  | { status: "pending" | "processing" | "not_found" }
+  | { status: "pending" | "processing" | "not_found"; progress?: TaskProgress }
   | { status: "error"; error: string };
 
 // --- lifecycle ---
@@ -113,12 +121,27 @@ async function resolveTaskStatus(id: string): Promise<TaskStatusResult> {
   if (state) {
     if (state.status === "error")
       return { status: "error", error: state.error ?? "Unknown error" };
+    if (state.status === "processing" && state.totalImages != null) {
+      return {
+        status: "processing",
+        progress: {
+          totalImages: state.totalImages,
+          processedImages: state.processedImages ?? 0,
+          startedAt: state.startedAt ?? Date.now(),
+          etaSeconds: state.etaSeconds,
+        },
+      };
+    }
     return { status: state.status };
   }
   return { status: "not_found" };
 }
 
 // --- service functions ---
+
+export function isInfoCached(id: string): boolean {
+  return infoCache.has(id);
+}
 
 export async function queryInfo(id: string): Promise<InfoResponse> {
   const cached = infoCache.get(id) as InfoResponse | undefined;
@@ -194,7 +217,44 @@ async function runWorker() {
       if (!result.success)
         throw new Error(`Upstream error: ${result.error}`);
 
-      const buffer = await generatePDF(result.result);
+      const photo = result.result;
+      const startedAt = Date.now();
+      const totalImages = photo.images.length;
+      setTaskState(id, {
+        status: "processing",
+        retryCount,
+        totalImages,
+        startedAt,
+        processedImages: 0,
+        updatedAt: Date.now(),
+      });
+
+      const buffer = await generatePDF(
+        photo,
+        (p: ProgressInfo) => {
+          setTaskState(id, {
+            status: "processing",
+            retryCount,
+            totalImages,
+            startedAt,
+            processedImages: p.processed,
+            updatedAt: Date.now(),
+          });
+        },
+        (elapsed: number, total: number) => {
+          const etaSeconds = Math.round((elapsed * total) / PDF_DOWNLOAD_CONCURRENCY / 1000);
+          setTaskState(id, {
+            status: "processing",
+            retryCount,
+            totalImages: total,
+            startedAt,
+            processedImages: 1,
+            etaSeconds,
+            updatedAt: Date.now(),
+          });
+        },
+      );
+
       await pdfCache.set(id, buffer);
       deleteTaskState(id);
       console.log(`PDF generated and cached: ${id}`);

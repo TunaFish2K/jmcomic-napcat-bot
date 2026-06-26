@@ -7,13 +7,41 @@ export function buildTextMessage(text: string): SendMessageSegment[] {
   return [Structs.text(text)];
 }
 
-export function buildImageMessage(base64DataUrl: string, name = "cover.jpg"): SendMessageSegment[] {
-  const base64 = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
-  return [Structs.image(`base64://${base64}`, name)];
+export function buildCoverMessage(
+  text: string,
+  base64DataUrl: string | null,
+  userId?: number,
+): SendMessageSegment[] {
+  const segments: SendMessageSegment[] = [];
+  if (userId) segments.push(Structs.at(userId));
+  segments.push(Structs.text(`\n${text}`));
+  if (base64DataUrl) {
+    const base64 = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
+    segments.push(Structs.image(`base64://${base64}`, "cover.jpg"));
+  }
+  return segments;
 }
 
-export function buildFileMessage(file: string | Buffer, name = "album.pdf"): SendMessageSegment[] {
-  return [Structs.file(file, name)];
+export function buildNotificationMessage(
+  text: string,
+  userId?: number,
+): SendMessageSegment[] {
+  const segments: SendMessageSegment[] = [];
+  if (userId) segments.push(Structs.at(userId));
+  segments.push(Structs.text(`\n${text}`));
+  return segments;
+}
+
+export function buildFileMessage(
+  file: string | Buffer,
+  name = "album.pdf",
+  userId?: number,
+): SendMessageSegment[] {
+  const segments: SendMessageSegment[] = [];
+  if (userId) segments.push(Structs.at(userId));
+  segments.push(Structs.text("\n")); // keep @ on its own line
+  segments.push(Structs.file(file, name));
+  return segments;
 }
 
 let globalNapcat: NCWebsocket | null = null;
