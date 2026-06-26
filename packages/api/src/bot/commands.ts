@@ -103,16 +103,18 @@ export async function handleQuery(context: MessageContext, id: string) {
     // @ notification
     await reply(context, atOnly(context.user_id));
 
-    // merge-forward: text only
+    // merge-forward: text + cover
     const nodes = [
       { content: textContent(text), userId: botUserId, nickname: botNickname },
     ];
-    await sendForward(context, forwardNodes(nodes));
-
-    // cover as separate regular message (forward with base64 image may timeout)
     if (info.cover) {
-      await reply(context, imageContent(info.cover));
+      nodes.push({
+        content: imageContent(info.cover),
+        userId: botUserId,
+        nickname: botNickname,
+      });
     }
+    await sendForward(context, forwardNodes(nodes));
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(
