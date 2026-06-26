@@ -1,25 +1,18 @@
-import type { AllHandlers, NCWebsocket, SendMessageSegment } from "node-napcat-ts";
+import type { AllHandlers, NCWebsocket, SendMessageSegment, NodeSegment } from "node-napcat-ts";
 import { Structs } from "node-napcat-ts";
 
 export type MessageContext = AllHandlers["message"];
 
-export function buildTextMessage(text: string): SendMessageSegment[] {
-  return [Structs.text(text)];
+let globalNapcat: NCWebsocket | null = null;
+
+export function setNapcatInstance(napcat: NCWebsocket) {
+  globalNapcat = napcat;
 }
 
-export function buildCoverMessage(
-  text: string,
-  base64DataUrl: string | null,
-  userId?: number,
-): SendMessageSegment[] {
-  const segments: SendMessageSegment[] = [];
-  if (userId) segments.push(Structs.at(userId));
-  segments.push(Structs.text(`\n${text}`));
-  if (base64DataUrl) {
-    const base64 = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
-    segments.push(Structs.image(`base64://${base64}`, "cover.jpg"));
-  }
-  return segments;
+// --- regular message builders ---
+
+export function buildTextMessage(text: string): SendMessageSegment[] {
+  return [Structs.text(text)];
 }
 
 export function buildNotificationMessage(
@@ -32,24 +25,54 @@ export function buildNotificationMessage(
   return segments;
 }
 
-export function buildFileMessage(
-  file: string | Buffer,
-  name = "album.pdf",
-  userId?: number,
-): SendMessageSegment[] {
-  const segments: SendMessageSegment[] = [];
-  if (userId) segments.push(Structs.at(userId));
-  segments.push(Structs.text("\n")); // keep @ on its own line
-  segments.push(Structs.file(file, name));
-  return segments;
+// --- forward message builders ---
+
+export function atOnly(userId: number): SendMessageSegment[] {
+  return [Structs.at(userId)];
 }
 
-let globalNapcat: NCWebsocket | null = null;
+export function forwardNodes(
+  items: { content: SendMessageSegment[]; userId: string; nickname: string }[],
+): NodeSegment[] {
+  return items.map((item) =>
+    Structs.customNode(item.content, item.userId, item.nickname),
+  );
+}
 
-export async function reply(context: MessageContext, message: SendMessageSegment[]) {
-  if (!globalNapcat) {
-    throw new Error("Napcat instance not initialized");
-  }
+export async function sendForward(
+  context: MessageContext,
+  nodes: NodeSegment[],
+): Promise<{ message_id: number; res_id: string }> {
+  if (!globalNapcat) throw new Error("Napcat instance not initialized");
+  if (context.message_type !== "group") throw new Error("sendForward only supports group messages");
+  return globalNapcat.send_forward_msg({
+    group_id: context.group_id!,
+    message: nodes,
+  });
+}
+
+// --- node content builders ---
+
+export function textContent(text: string): SendMessageSegment[] {
+  return [Structs.text(text)];
+}
+
+export function imageContent(base64DataUrl: string): SendMessageSegment[] {
+  const base64 = base64DataUrl.replace(/^data:image\/\w+;base64,/, "");
+  return [Structs.image(`base64://${base64}`, "cover.jpg")];
+}
+
+export function fileContent(file: string | Buffer, name: string): SendMessageSegment[] {
+  return [Structs.file(file, name)];
+}
+
+// --- reply helper ---
+
+export async function reply(
+  context: MessageContext,
+  message: SendMessageSegment[],
+) {
+  if (!globalNapcat) throw new Error("Napcat instance not initialized");
   if (context.message_type === "private") {
     return await globalNapcat.send_msg({
       user_id: context.user_id,
@@ -60,8 +83,4 @@ export async function reply(context: MessageContext, message: SendMessageSegment
     group_id: context.group_id,
     message,
   });
-}
-
-export function setNapcatInstance(napcat: NCWebsocket) {
-  globalNapcat = napcat;
 }

@@ -6,20 +6,30 @@ import {
   isInfoCached,
   extractErrorMessage,
   type InfoResponse,
-  type TaskStatusResult,
 } from "../service.js";
 import {
   reply,
-  buildTextMessage,
-  buildCoverMessage,
   buildNotificationMessage,
-  buildFileMessage,
+  atOnly,
+  forwardNodes,
+  sendForward,
+  textContent,
+  imageContent,
+  fileContent,
   type MessageContext,
 } from "./reply.js";
 import { POLL_INTERVAL_MS, MAX_POLL_ATTEMPTS } from "./config.js";
 
 const QUERY_ALIASES = new Set(["/query", "/查询", "/本子"]);
 const DOWNLOAD_ALIASES = new Set(["/pdf", "/download", "/dl", "/下载"]);
+
+let botUserId = "0";
+let botNickname = "JMComic Bot";
+
+export function setBotInfo(userId: number, nickname: string) {
+  botUserId = String(userId);
+  botNickname = nickname;
+}
 
 export interface ParsedCommand {
   type: "query" | "download";
@@ -89,8 +99,22 @@ export async function handleQuery(context: MessageContext, id: string) {
   try {
     const info = await queryInfo(id);
     const text = buildInfoText(info);
-    const msg = buildCoverMessage(text, info.cover, context.user_id);
-    await reply(context, msg);
+
+    // @ notification
+    await reply(context, atOnly(context.user_id));
+
+    // merge-forward: text + cover
+    const nodes: { content: ReturnType<typeof textContent>; userId: string; nickname: string }[] = [
+      { content: textContent(text), userId: botUserId, nickname: botNickname },
+    ];
+    if (info.cover) {
+      nodes.push({
+        content: imageContent(info.cover),
+        userId: botUserId,
+        nickname: botNickname,
+      });
+    }
+    await sendForward(context, forwardNodes(nodes));
   } catch (err) {
     const message = extractErrorMessage(err);
     await reply(
@@ -122,7 +146,15 @@ export async function handleDownload(context: MessageContext, id: string) {
       const status = await queryPDFStatus(id);
       if (status.status === "ready") {
         const buffer = await readPDFBuffer(id);
-        await reply(context, buildFileMessage(buffer, `${id}.pdf`, context.user_id));
+
+        // @ notification
+        await reply(context, atOnly(context.user_id));
+
+        // merge-forward: pdf file
+        const nodes = [
+          { content: fileContent(buffer, `${id}.pdf`), userId: botUserId, nickname: botNickname },
+        ];
+        await sendForward(context, forwardNodes(nodes));
         return;
       }
       if (status.status === "error") {

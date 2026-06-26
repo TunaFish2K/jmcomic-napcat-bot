@@ -10,6 +10,7 @@ import {
   buildHelpMessage,
   handleQuery,
   handleDownload,
+  setBotInfo,
 } from "./commands.js";
 import { setNapcatInstance, reply, buildNotificationMessage } from "./reply.js";
 import { RateLimiter } from "./rate-limiter.js";
@@ -87,4 +88,15 @@ export async function startBot(): Promise<void> {
 
   await napcat.connect();
   console.log("Connected to Napcat");
+
+  try {
+    const loginInfo = (await napcat.get_login_info()) as {
+      user_id: number;
+      nickname: string;
+    };
+    setBotInfo(loginInfo.user_id, loginInfo.nickname);
+    console.log(`Bot logged in: ${loginInfo.nickname} (${loginInfo.user_id})`);
+  } catch (err) {
+    console.error("Failed to get login info:", err);
+  }
 }
