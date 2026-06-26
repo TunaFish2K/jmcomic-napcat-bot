@@ -31,35 +31,26 @@ export async function startBot(): Promise<void> {
   setNapcatInstance(napcat);
 
   const rateLimiter = new RateLimiter();
-  let botUserId: number | null = null;
 
-  function extractTextAndCheckMention(
+  function extractCommandText(
     context: AllHandlers["message"],
   ): string | null {
     if (context.message_type !== "group") return null;
 
-    const segments = context.message;
-    let textParts: string[] = [];
-    let mentioned = false;
-
-    for (const segment of segments) {
-      if (segment.type === "at") {
-        const qq = segment.data.qq;
-        if (qq === String(botUserId) || qq === "all") {
-          mentioned = true;
-        }
-      } else if (segment.type === "text") {
+    const textParts: string[] = [];
+    for (const segment of context.message) {
+      if (segment.type === "text") {
         const text = segment.data.text;
         if (text) textParts.push(text);
       }
     }
-
-    if (!mentioned) return null;
-    return textParts.join("").trim();
+    const raw = textParts.join("").trim();
+    if (!raw.startsWith("/")) return null;
+    return raw;
   }
 
   napcat.on("message", async (context) => {
-    const text = extractTextAndCheckMention(context);
+    const text = extractCommandText(context);
     if (!text) return;
 
     if (!rateLimiter.try(context.user_id)) {
@@ -96,15 +87,4 @@ export async function startBot(): Promise<void> {
 
   await napcat.connect();
   console.log("Connected to Napcat");
-
-  try {
-    const loginInfo = (await napcat.get_login_info()) as {
-      user_id: number;
-      nickname: string;
-    };
-    botUserId = loginInfo.user_id;
-    console.log(`Bot logged in: ${loginInfo.nickname} (${botUserId})`);
-  } catch (err) {
-    console.error("Failed to get login info:", err);
-  }
 }
