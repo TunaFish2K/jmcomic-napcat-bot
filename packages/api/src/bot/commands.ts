@@ -83,6 +83,7 @@ function buildInfoText(info: InfoResponse): string {
     info.actors?.length ? `演员：${info.actors.join(", ")}` : null,
     info.views ? `浏览：${info.views}` : null,
     info.likes ? `点赞：${info.likes}` : null,
+    info.views && info.likes && Number(info.views) > 0 ? `点赞率：${(Number(info.likes) / Number(info.views) * 100).toFixed(1)}%` : null,
   ]
     .filter((line): line is string => line !== null)
     .join("\n\n");
