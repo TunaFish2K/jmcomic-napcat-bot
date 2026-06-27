@@ -81,10 +81,10 @@ export function fileContent(
 }
 
 export function forwardNodes(
-  items: { content: SendMessageSegment[]; userId: string; nickname: string }[],
+  items: { content: SendMessageSegment[]; userId: string; nickname: string; summary?: string }[],
 ): NodeSegment[] {
   return items.map((item) =>
-    Structs.customNode(item.content, item.userId, item.nickname),
+    Structs.customNode(item.content, item.userId, item.nickname, undefined, undefined, item.summary),
   );
 }
 

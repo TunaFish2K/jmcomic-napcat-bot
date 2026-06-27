@@ -135,7 +135,7 @@ async function trySendForwardSafe(
 
   try {
     const nodes = cover
-      ? [textNode, { content: imageContent(cover), userId: botUserId, nickname: botNickname }]
+      ? [textNode, { content: imageContent(cover), userId: botUserId, nickname: botNickname, summary: "[封面]" }]
       : [textNode];
     await sendForward(context, forwardNodes(nodes));
     return true;
