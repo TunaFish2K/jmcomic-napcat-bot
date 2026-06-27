@@ -107,7 +107,7 @@ export async function handleQuery(context: MessageContext, id: string) {
 
   try {
     const info = await queryInfo(id);
-    const text = buildInfoText(info);
+    const text = `${buildInfoText(info)}\n\n阅读：https://j.2kb.fish/reader/${id}`;
 
     const ok = await trySendForwardSafe(context, text, info.cover);
     if (ok) {
