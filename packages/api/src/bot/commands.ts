@@ -45,7 +45,7 @@ export function parseCommand(text: string): ParsedCommand | null {
   if (parts.length < 2) return null;
 
   const command = parts[0];
-  const id = parts[1];
+  const id = (parts[1] ?? "").replace(/\D/g, "");
   if (!command || !id) return null;
 
   if (QUERY_ALIASES.has(command)) {
