@@ -157,7 +157,7 @@ async function trySendPdfForwardSafe(
   encrypted: Buffer,
   id: string,
 ): Promise<boolean> {
-  const idNode = { content: textContent(`id: ${id};`), userId: botUserId, nickname: botNickname };
+  const idNode = { content: textContent(`密码：${id}`), userId: botUserId, nickname: botNickname };
   const fileNode = { content: fileContent(encrypted, `${id}.pdf`), userId: botUserId, nickname: botNickname };
 
   try {
