@@ -3,8 +3,7 @@ import { availableParallelism } from "os";
 export const UPSTREAM_BASE_URL = process.env.JM_UPSTREAM_BASE_URL ?? "https://jmserver.2kb.fish";
 export const UPSTREAM_TIMEOUT_MS = Number(process.env.JM_UPSTREAM_TIMEOUT_MS ?? 10000);
 
-export const INFO_CACHE_TTL_SECONDS = Number(process.env.JM_INFO_CACHE_TTL ?? 600);
-export const INFO_CACHE_MAX_KEYS = Number(process.env.JM_INFO_CACHE_MAX_KEYS ?? 100);
+export const INFO_CACHE_DIR = process.env.JM_INFO_CACHE_DIR ?? "./cache/info";
 
 export const MAX_TASK_QUEUED = Number(process.env.JM_MAX_TASK_QUEUED ?? 100);
 

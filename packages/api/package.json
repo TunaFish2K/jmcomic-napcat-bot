@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@sinclair/typebox": "^0.34.49",
-    "node-cache": "^5.1.2",
     "node-napcat-ts": "^0.4.25",
     "p-limit": "^7.3.0",
     "pdf-lib": "^1.17.1",

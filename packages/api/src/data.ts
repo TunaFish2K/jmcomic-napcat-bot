@@ -206,6 +206,43 @@ export class PDFCache {
   }
 }
 
+export class InfoCache {
+  #cacheFolder: string
+
+  constructor(cacheFolder: string) {
+    this.#cacheFolder = path.resolve(cacheFolder)
+  }
+
+  get cacheFolder(): string {
+    return this.#cacheFolder
+  }
+
+  async init(): Promise<void> {
+    await fs.mkdir(this.#cacheFolder, { recursive: true })
+  }
+
+  async has(id: string): Promise<boolean> {
+    return fileExists(this.#filePath(id))
+  }
+
+  async get<T>(id: string): Promise<T | null> {
+    try {
+      const raw = await fs.readFile(this.#filePath(id), "utf-8")
+      return JSON.parse(raw) as T
+    } catch {
+      return null
+    }
+  }
+
+  async set(id: string, data: unknown): Promise<void> {
+    await fs.writeFile(this.#filePath(id), JSON.stringify(data), "utf-8")
+  }
+
+  #filePath(id: string): string {
+    return path.join(this.#cacheFolder, createHash("sha256").update(id).digest("hex") + ".json")
+  }
+}
+
 export type TaskStatus = "pending" | "processing" | "ready" | "error";
 
 export interface TaskState {

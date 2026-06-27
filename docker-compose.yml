@@ -12,9 +12,8 @@ services:
       JM_UPSTREAM_BASE_URL: https://jmserver.2kb.fish
       JM_UPSTREAM_TIMEOUT_MS: 10000
 
-      # Info cache (memory)
-      JM_INFO_CACHE_TTL: 600
-      JM_INFO_CACHE_MAX_KEYS: 100
+      # Info cache (disk, permanent)
+      JM_INFO_CACHE_DIR: /app/packages/api/cache/info
 
       # PDF task queue
       JM_MAX_TASK_QUEUED: 100

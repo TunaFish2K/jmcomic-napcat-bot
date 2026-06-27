@@ -96,7 +96,7 @@ export async function handleQuery(context: MessageContext, id: string) {
     return;
   }
 
-  const isCached = isInfoCached(id);
+  const isCached = await isInfoCached(id);
 
   if (!isCached) {
     await reply(

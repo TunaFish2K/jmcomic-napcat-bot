@@ -1,7 +1,5 @@
-import NodeCache from "node-cache";
 import {
-  INFO_CACHE_MAX_KEYS,
-  INFO_CACHE_TTL_SECONDS,
+  INFO_CACHE_DIR,
   MAX_RETRIES,
   MAX_TASK_QUEUED,
   PDF_CACHE_DIR,
@@ -17,6 +15,7 @@ import {
 import {
   TaskQueue,
   PDFCache,
+  InfoCache,
   getTaskState,
   setTaskState,
   deleteTaskState,
@@ -77,10 +76,7 @@ function translateError(err: unknown): string {
 
 // --- lifecycle ---
 
-const infoCache = new NodeCache({
-  stdTTL: INFO_CACHE_TTL_SECONDS,
-  maxKeys: INFO_CACHE_MAX_KEYS,
-});
+const infoCache = new InfoCache(INFO_CACHE_DIR);
 
 const toPDFQueue = new TaskQueue(MAX_TASK_QUEUED);
 const pdfCache = new PDFCache(PDF_CACHE_DIR, PDF_CACHE_MAX_SIZE);
@@ -89,7 +85,11 @@ let shuttingDown = false;
 let activeWorkers = 0;
 
 export async function initService(): Promise<void> {
+  await infoCache.init();
   await pdfCache.init();
+  console.log(
+    `Info cache initialized at ${infoCache.cacheFolder}`,
+  );
   console.log(
     `PDF cache initialized: ${pdfCache.recordCount} records, ${(pdfCache.totalSize / 1024 / 1024).toFixed(1)}MB / ${(pdfCache.maxSize / 1024 / 1024 / 1024).toFixed(1)}GB`,
   );
@@ -165,12 +165,12 @@ async function resolveTaskStatus(id: string): Promise<TaskStatusResult> {
 
 // --- service functions ---
 
-export function isInfoCached(id: string): boolean {
+export async function isInfoCached(id: string): Promise<boolean> {
   return infoCache.has(id);
 }
 
 export async function queryInfo(id: string): Promise<InfoResponse> {
-  const cached = infoCache.get(id) as InfoResponse | undefined;
+  const cached = await infoCache.get<InfoResponse>(id);
   if (cached) return cached;
 
   const [photoResult, albumResult] = await Promise.all([
@@ -186,7 +186,7 @@ export async function queryInfo(id: string): Promise<InfoResponse> {
   const album = albumResult?.result ?? null;
   const coverBuffer = await downloadCoverImage(photo);
   const info = combinePhotoAndAlbumToInfo(photo, album, coverBuffer);
-  infoCache.set(id, info);
+  await infoCache.set(id, info);
   return info;
 }
 
