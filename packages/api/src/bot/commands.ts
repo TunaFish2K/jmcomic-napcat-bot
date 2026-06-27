@@ -197,7 +197,7 @@ export async function handleDownload(context: MessageContext, id: string) {
       const status = await queryPDFStatus(id);
       if (status.status === "ready") {
         const buffer = await readPDFBuffer(id);
-        const encrypted = encryptPDF(buffer, id);
+        const encrypted = await encryptPDF(buffer, id);
         const ok = await trySendPdfForwardSafe(context, encrypted, id);
         if (!ok) {
           await reply(
