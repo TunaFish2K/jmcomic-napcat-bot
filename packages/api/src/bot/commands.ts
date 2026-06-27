@@ -109,7 +109,9 @@ export async function handleQuery(context: MessageContext, id: string) {
 
     const ok = await trySendForwardSafe(context, text, info.cover);
     if (ok) {
-      await reply(context, atOnly(context.user_id));
+      if (context.message_type !== "private") {
+        await reply(context, atOnly(context.user_id));
+      }
     } else {
       await reply(context, buildNotificationMessage(text, context.user_id));
     }
