@@ -84,10 +84,14 @@ export function forwardNodes(
 export async function sendForward(
   context: MessageContext,
   nodes: NodeSegment[],
-): Promise<{ message_id: number; res_id: string }> {
+): Promise<{ message_id: number; res_id?: string }> {
   if (!globalNapcat) throw new Error("Napcat instance not initialized");
-  if (context.message_type !== "group")
-    throw new Error("sendForward only supports group messages");
+  if (context.message_type === "private") {
+    return globalNapcat.send_private_forward_msg({
+      user_id: context.user_id,
+      message: nodes,
+    });
+  }
   return globalNapcat.send_forward_msg({
     group_id: context.group_id!,
     message: nodes,
@@ -104,7 +108,7 @@ export async function reply(
   if (context.message_type === "private") {
     return await globalNapcat.send_msg({
       user_id: context.user_id,
-      message,
+      message: message.filter((m) => m.type !== "at"),
     });
   }
   return await globalNapcat.send_msg({

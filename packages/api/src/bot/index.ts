@@ -36,7 +36,7 @@ export async function startBot(): Promise<void> {
   function extractCommandText(
     context: AllHandlers["message"],
   ): string | null {
-    if (context.message_type !== "group") return null;
+    if (context.message_type !== "group" && context.message_type !== "private") return null;
 
     const textParts: string[] = [];
     for (const segment of context.message) {
@@ -84,6 +84,12 @@ export async function startBot(): Promise<void> {
     } else {
       await handleDownload(context, command.id);
     }
+  });
+
+  napcat.on("request.friend", (context) => {
+    console.log(
+      `Friend request from ${context.user_id}: ${context.comment}`,
+    );
   });
 
   await napcat.connect();
