@@ -12,6 +12,8 @@ RUN pnpm build
 
 FROM node:22-alpine AS runner
 ENV CI=true
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
+    apk add --no-cache qpdf
 RUN npm install -g pnpm
 WORKDIR /app
 

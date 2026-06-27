@@ -73,6 +73,13 @@ export function imageContent(base64DataUrl: string): SendMessageSegment[] {
   return [Structs.image(`base64://${base64}`, "cover.jpg")];
 }
 
+export function fileContent(
+  file: string | Buffer,
+  name: string,
+): SendMessageSegment[] {
+  return [Structs.file(file, name)];
+}
+
 export function forwardNodes(
   items: { content: SendMessageSegment[]; userId: string; nickname: string }[],
 ): NodeSegment[] {

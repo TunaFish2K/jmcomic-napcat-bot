@@ -16,10 +16,12 @@ import {
   sendForward,
   textContent,
   imageContent,
+  fileContent,
   type MessageContext,
 } from "./reply.js";
 import { POLL_INTERVAL_MS, MAX_POLL_ATTEMPTS } from "./config.js";
 import { runQueryMiddlewares, runDownloadMiddlewares } from "./middleware.js";
+import { encryptPDF } from "../encrypt.js";
 
 const QUERY_ALIASES = new Set(["/query", "/查询", "/本子"]);
 const DOWNLOAD_ALIASES = new Set(["/pdf", "/download", "/dl", "/下载"]);
@@ -150,6 +152,23 @@ async function trySendForwardSafe(
   }
 }
 
+async function trySendPdfForwardSafe(
+  context: MessageContext,
+  encrypted: Buffer,
+  id: string,
+): Promise<boolean> {
+  const idNode = { content: textContent(`id: ${id};`), userId: botUserId, nickname: botNickname };
+  const fileNode = { content: fileContent(encrypted, `${id}.pdf`), userId: botUserId, nickname: botNickname };
+
+  try {
+    await sendForward(context, forwardNodes([idNode, fileNode]));
+    return true;
+  } catch (err) {
+    console.warn("sendForward (pdf) failed, falling back to direct file send:", extractErrorMessage(err));
+    return false;
+  }
+}
+
 export async function handleDownload(context: MessageContext, id: string) {
   const block = await runDownloadMiddlewares({ id, userId: context.user_id });
   if (block) {
@@ -178,10 +197,14 @@ export async function handleDownload(context: MessageContext, id: string) {
       const status = await queryPDFStatus(id);
       if (status.status === "ready") {
         const buffer = await readPDFBuffer(id);
-        await reply(
-          context,
-          buildFileNotification(buffer, `${id}.pdf`, context.user_id),
-        );
+        const encrypted = encryptPDF(buffer, id);
+        const ok = await trySendPdfForwardSafe(context, encrypted, id);
+        if (!ok) {
+          await reply(
+            context,
+            buildFileNotification(encrypted, `${id}.pdf`, context.user_id),
+          );
+        }
         return;
       }
       if (status.status === "error") {
